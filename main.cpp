@@ -11,9 +11,21 @@ const int width = 1350;
 const int height = 700;
 const int total = 7;    // dimensiunea matricei
 const int dim = 70;     // dimensiunea unui patrat
-const int R = 19;       // raza cerculio
+const int R = 19;       // raza cerculi
+const int Rposibil = 10;
 const COLORREF Color = RGB(200, 1, 30);     // culoarea cercului
 const COLORREF Active = RGB(0, 255, 0);     // culoarea posibilitatii
+
+int GetX_coord(int x);
+int GetY_coord(int y);
+int GetX_mat(int x);
+int GetY_mat(int y);
+inline bool Inmat(int x, int y);
+void Posiblemove(int px[], int py[], int lg);
+void ClearPosiblemove(int px[], int py[], int lg);
+void Interact(int tabla[][total]);
+void Start(char loc[]);
+void MainProgram();
 
 /**
     transform din coordonata xOy in coordonata din matrice
@@ -76,7 +88,7 @@ void Posiblemove(int px[], int py[], int lg)
         int midy = GetY_mat(py[i]) + dim / 2;
 
         setcolor(Active);
-        circle(midx, midy, R);
+        circle(midx, midy, Rposibil);
         setfillstyle(SOLID_FILL, Active);
         floodfill(midx, midy, Active);
         setcolor(WHITE);
@@ -102,7 +114,7 @@ void ClearPosiblemove(int px[], int py[], int lg)
     actualizez mutarile
 */
 
-void MoveCircle(int tabla[][total])
+void Interact(int tabla[][total])
 {
     int px[5], py[5], lg = 0;   /// pozitiile valabile
     int dx[] = {-1, 1, 0, 0};
@@ -119,7 +131,10 @@ void MoveCircle(int tabla[][total])
             int x = GetX_coord(pt.x) - 1;       /// !!! x e coloana si y e linia !!!
             int y = GetY_coord(pt.y) - 1;
 
-            if(GetPixel(dc, pt.x, pt.y) == Color)   /// vad daca am dat click pe o piesa rosie
+            int newx = GetX_mat(x) + dim / 2 ;
+            int newy = GetY_mat(y) + dim / 2 + dim / 4;
+
+            if(GetPixel(dc, newx, newy) == Color)   /// vad daca am dat click pe o piesa rosie
             {
                 ClearPosiblemove(px, py, lg);
                 lg = 0;
@@ -145,8 +160,9 @@ void MoveCircle(int tabla[][total])
             }
             else {
 
-                if(GetPixel(dc, pt.x, pt.y) == Active)
+                if(GetPixel(dc, newx, newy) == Active)
                 {
+
                     for(int k = 0; k < 4; k++)
                         if(px[lg - 1] + 2 * dx[k] == x && py[lg - 1] + 2 * dy[k] == y)
                         {
@@ -186,6 +202,7 @@ void MoveCircle(int tabla[][total])
         }
         delay(100);
     }
+
 }
 
 /**
@@ -206,8 +223,7 @@ void Start(char loc[])
     int startx = width / 2 - dim * total / 2;
     int starty = height / 2 - dim * total / 2;
     int aux = startx, midx, midy;
-    int contor = 1;
-    char number[10];
+    char number[3];
 
     for(int i = 0; i < total; i++)
     {
@@ -217,13 +233,13 @@ void Start(char loc[])
             if(!tabla[i][j])
                 continue;
 
-
+            number[0] = i + '0' + 1;
+            number[1] = j + '0' + 1;
             rectangle(startx, starty, startx + dim, starty + dim);
             midx = startx + dim / 2;
             midy = starty + dim / 2;
 
 
-            itoa(contor++, number, 10);
             outtextxy(midx + dim / 4, midy + dim / 4, number);
 
             if(tabla[i][j] == fills)
@@ -241,8 +257,7 @@ void Start(char loc[])
     }
 
 
-    MoveCircle(tabla);
-
+    Interact(tabla);
     getch();
     closegraph();
     fin.close();
@@ -252,6 +267,5 @@ void Start(char loc[])
 int main()
 {
     Start("test.in");
-
     return 0;
 }

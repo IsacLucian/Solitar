@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1607530877 source:c:\users\lucian\desktop\info\solit1\main.cpp
+1607693192 source:c:\users\lucian\desktop\info\solit1\main.cpp
 	<iostream>
 	<fstream>
 	<graphics.h>
