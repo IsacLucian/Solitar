@@ -35,7 +35,7 @@ inline double dist(int xi, int yi, int xf, int yf);
 */
 int GetX_coord(int x)
 {
-    int startx = width / 2 - dim * total / 2;
+    int startx = width / 2 - dim * total / 2 - dim;
     int endx = startx + 8 * dim;
     if(x < startx || x > endx) return -1;
 
@@ -44,12 +44,12 @@ int GetX_coord(int x)
 
 int GetY_coord(int y)
 {
-    int starty = height / 2 - dim * total / 2;
-    int endy = starty + 7 * dim + dim / 2;
+    int starty = height / 2 - dim * total / 2 - dim;
+    int endy = starty + 8 * dim;
 
     if(y < starty || y > endy) return -1;
 
-    return (y - starty) / dim + 1;
+    return (y - starty) / dim;
 }
 
 /**
@@ -60,7 +60,7 @@ int GetX_mat(int x)
 {
     int startx = width / 2 - dim * total / 2;
 
-    return startx + dim * (x + 1);
+    return startx + dim * x;
 }
 
 int GetY_mat(int y)
@@ -227,7 +227,8 @@ void Start(char loc[])
 
     fin.close();
 
-    int startx = width / 2 - dim * total / 2;
+
+    int startx = width / 2 - dim * total / 2 - dim;
     int starty = height / 2 - dim * total / 2;
     int aux = startx, midx, midy;
     char number[3];
@@ -339,7 +340,7 @@ void CreateTable()
     outtextxy(savex + dim / 2, savey + dim / 8, "Salveaza");
     setcolor(Create);
 
-    int startx = width / 2 - dim * total / 2;
+    int startx = width / 2 - dim * total / 2 - dim;
     int starty = height / 2 - dim * total / 2;
     int aux = startx;
     int midx, midy;
