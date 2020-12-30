@@ -1,7 +1,23 @@
 # depslib dependency file v1.0
-1608658669 source:c:\users\lucian\desktop\info\solit1\main.cpp
+1609287941 source:c:\users\lucian\desktop\info\solit1\main.cpp
 	<iostream>
 	<fstream>
 	<graphics.h>
 	<math.h>
+	<filesystem>
+	<dirent.h>
+
+1609091672 source:c:\users\admin\desktop\proiect-ip-main\main.cpp
+	<iostream>
+	<fstream>
+	<graphics.h>
+	<math.h>
+
+1609286900 source:c:\users\lucian\desktop\solitar-main\main.cpp
+	<iostream>
+	<fstream>
+	<graphics.h>
+	<math.h>
+	<filesystem>
+	<dirent.h>
 
