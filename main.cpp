@@ -381,6 +381,34 @@ void NoPossibleMoves(int tabla[][total])
     outtextxy(startx + 3 * dim / 2, starty, number);
 }
 
+void UpdateTime(int ms)
+{
+    Clear(width / 6 - 2 * dim, height / 4 - dim / 2, width / 6 + 2 * dim, height / 4 + dim / 2);
+
+    int s, m;
+
+    s = ms / 1000;
+    m = s / 60;
+    s = s % 60;
+
+    char S[3], M[10];
+
+    M[0] = m / 10 + '0';
+    M[1] = m % 10 + '0';
+    M[2] = 0;
+
+    S[0] = s / 10 + '0';
+    S[1] = s % 10 + '0';
+    S[2] = 0;
+
+    strcat(M, " : ");
+    strcat(M, S);
+
+    setcolor(WHITE);
+    settextjustify(CENTER_TEXT, CENTER_TEXT);
+    settextstyle(SANS_SERIF_FONT, HORIZ_DIR, 7);
+    outtextxy(width / 6 + 20, height / 5, M);
+}
 
 /**
     actualizez mutarile
@@ -399,12 +427,20 @@ void Interact(int tabla[][total], int endx, int endy, bool &b, bool &r)
 
     UpdateMoves(m, nr_moves);
 
-    int mx, my;
+    UpdateTime(0);
+
+    int mx, my, ct = 0;
     HDC dc = GetDC(NULL);
     while(1)
     {
         clearmouseclick(WM_LBUTTONDOWN);
         delay(50);
+        ct += 50;
+
+        if(ct % 1000 == 0 && enable)
+            UpdateTime(ct);
+
+
         if(ismouseclick(WM_LBUTTONDOWN))
         {
             mx = mousex();
