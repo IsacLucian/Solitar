@@ -8,7 +8,7 @@
 namespace fs = std::filesystem;
 using namespace std;
 
-const int total = 7;    // dimensiunea matricei
+const int total = 8;    // dimensiunea matricei
 int fills = 1;    // fill square
 int emptys = 2;   // empty square
 int width = 1350;
@@ -49,6 +49,7 @@ void MovePiece(int px[], int py[], int dir);
 void Undo(int tabla[][total], Moves a[], int &n);
 void CreateTable();
 void SelectLvl();
+void NoPossibleMoves(int tabla[][total]);
 
 void Meniu();
 inline void Meniu_Romana(int i);
@@ -78,7 +79,7 @@ inline double dist(int xi, int yi, int xf, int yf)
 int GetX_coord(int x)
 {
     int startx = width / 2 - dim * total / 2 - dim;
-    int endx = startx + 8 * dim;
+    int endx = startx + 9 * dim;
     if(x < startx || x > endx) return -1;
 
     return (x - startx) / dim;
@@ -87,7 +88,7 @@ int GetX_coord(int x)
 int GetY_coord(int y)
 {
     int starty = height / 2 - dim * total / 2 - dim;
-    int endy = starty + 8 * dim;
+    int endy = starty + 9 * dim;
 
     if(y < starty || y > endy) return -1;
 
@@ -187,24 +188,24 @@ void UpdateMoves(Moves a[], int n)
     char num[3], from_to[20];
     itoa(n, num, 10);
 
-    Clear(startx - 2 * dim, 0, width, height);
+    Clear(startx - 4 * dim + 10, 0, width, height);
 
     setcolor(WHITE);
     settextjustify(CENTER_TEXT, CENTER_TEXT);
     settextstyle(SANS_SERIF_FONT, HORIZ_DIR, 10);
+    startx -= dim;
     outtextxy(startx, starty, num);
 
-    bool reset = 1;
-    int x = startx - dim;
-    int y = starty + dim;
+
+    int x = startx - 2 * dim;
+    int y = starty + dim / 2;
 
     for(int i = 0; i < n; i++)
     {
-        if(i > 15 && reset)
+        if(i % 25 == 0 && i != 0)
         {
-            reset = 0;
-            y = starty + dim;
-            x = startx + dim;
+            y = starty + dim / 2;
+            x = x + 2 * dim;
         }
 
         from_to[0] = a[i].xi + '0' + 1;
@@ -222,7 +223,7 @@ void UpdateMoves(Moves a[], int n)
         settextstyle(SANS_SERIF_FONT, HORIZ_DIR, 2);
 
         outtextxy(x, y, from_to);
-        y += dim / 2;
+        y += dim / 3;
     }
 }
 
@@ -336,11 +337,56 @@ void Undo(int tabla[][total], Moves a[], int &n)
     DrawCircle(midx, midy, R, Color);
 }
 
+void NoPossibleMoves(int tabla[][total])
+{
+    int startx = width / 6;
+    int starty = height / 2;
+
+    Clear(startx, starty, startx + 2 * dim, starty + dim);
+
+    settextjustify(CENTER_TEXT, CENTER_TEXT);
+    settextstyle(SANS_SERIF_FONT, HORIZ_DIR, 2);
+    setcolor(Active);
+
+    if(variabila_meniu) outtextxy(startx, starty, "No. possible moves: ");
+    else outtextxy(startx, starty, "Nr. mutari posibile: ");
+
+    int cnt = 0;
+
+    for(int i = 0; i < total; i++)
+        for(int j = 0; j < total; j++)
+        {
+            if(tabla[i][j] != fills)
+                continue;
+
+            for(int k = 0; k < 4; k++)
+            {
+                int x = i + dx[k];
+                int y = j + dy[k];
+
+                if(Inmat(x, y) && tabla[x][y] == fills)
+                {
+                    x += dx[k];
+                    y += dy[k];
+                    if(Inmat(x, y) && tabla[x][y] == emptys)
+                        cnt++;
+                }
+            }
+        }
+
+    char number[3];
+    number[0] = cnt / 10 + '0';
+    number[1] = cnt % 10 + '0';
+    number[2] = 0;
+    outtextxy(startx + 3 * dim / 2, starty, number);
+}
+
+
 /**
     actualizez mutarile
 */
 
-void Interact(int tabla[][total], int endx, int endy)
+void Interact(int tabla[][total], int endx, int endy, bool &b, bool &r)
 {
     Moves m[50];
     int px[5], py[5];   /// pozitiile valabile
@@ -349,31 +395,42 @@ void Interact(int tabla[][total], int endx, int endy)
     int undox = width / 2 - dim / 2;
     int undoy = height / 2 - dim * total / 2 - dim;
 
+    NoPossibleMoves(tabla);
+
     UpdateMoves(m, nr_moves);
 
     int mx, my;
     HDC dc = GetDC(NULL);
     while(1)
     {
+        clearmouseclick(WM_LBUTTONDOWN);
+        delay(50);
         if(ismouseclick(WM_LBUTTONDOWN))
         {
             mx = mousex();
             my = mousey();
+            int x = GetX_coord(mx) - 1;       /// !!! x e coloana si y e linia !!!
+            int y = GetY_coord(my) - 1;
+
+            int newx = GetX_mat(x) + dim / 2;
+            int newy = GetY_mat(y) + dim / 2;
 
             if(mx < 100)
             {
-                setcolor(WHITE);
+                b = true;
+                return;
+            }
+
+
+            if(undox - dim <= mx && mx < undox && undoy <= my && my <= undoy + dim)
+            {
+                r = true;
                 return;
             }
 
             if(!enable)
                 continue;
 
-            int x = GetX_coord(mx) - 1;       /// !!! x e coloana si y e linia !!!
-            int y = GetY_coord(my) - 1;
-
-            int newx = GetX_mat(x) + dim / 2;
-            int newy = GetY_mat(y) + dim / 2;
 
             if(GetPixel(dc, newx, newy) == Color)   /// vad daca am dat click pe o piesa rosie
             {
@@ -419,31 +476,34 @@ void Interact(int tabla[][total], int endx, int endy)
                 }
                 ClearPosiblemove(px, py, lg, tabla);
 
-                if(undox <= newx && newx <= undox + dim && undoy <= newy && newy <= undoy + dim)
+                if(undox <= mx && mx <= undox + dim && undoy <= my && my <= undoy + dim)
                 {
                     Undo(tabla, m, nr_moves);
                     UpdateMoves(m, nr_moves);
                 }
+
+                NoPossibleMoves(tabla);
             }
 
-            clearmouseclick(WM_LBUTTONDOWN);
             status = CheckWin(tabla, endx, endy);
 
             if(status)
             {
                 settextjustify(CENTER_TEXT, CENTER_TEXT);
-                settextstyle(SANS_SERIF_FONT, HORIZ_DIR, 9);
+                settextstyle(SANS_SERIF_FONT, HORIZ_DIR, 7);
                 int startx = width / 2;
-                int starty = height / 2 - dim * total / 2 - dim;
+                int starty = height / 2;
                 if(status == 1)
                 {
                     setcolor(YELLOW);
-                    outtextxy(startx, starty, "Ai pierdut!");
+                    if(variabila_meniu) outtextxy(startx, starty, "You lost!");
+                    else outtextxy(startx, starty, "Ai pierdut!");
                 }
                 else
                 {
                     setcolor(BLUE);
-                    outtextxy(startx, starty, "Ai castigat!");
+                    if(variabila_meniu)outtextxy(startx, starty, "You won!");
+                    else outtextxy(startx, starty, "Ai castigat!");
                 }
 
                 setcolor(WHITE);
@@ -451,7 +511,6 @@ void Interact(int tabla[][total], int endx, int endy)
             }
         }
     }
-
 }
 
 /**
@@ -476,11 +535,15 @@ void Start(char loc[])
 
     char img[256];
     strcpy(img, current_folder);
-    strcat(img, "/res/undo.bmp");
+    strcat(img, "/res/undo.jpg");
 
     int undox = width / 2 - dim / 2;
     int undoy = height / 2 - dim * total / 2 - dim;
     readimagefile(img, undox, undoy, undox + dim, undoy + dim);
+
+    strcpy(img, current_folder);
+    strcat(img, "/res/reset.jpg");
+    readimagefile(img, undox - dim + 10, undoy + 10, undox - 10, undoy + dim - 10);
 
     int startx = width / 2 - dim * total / 2 - dim;
     int starty = height / 2 - dim * total / 2;
@@ -532,13 +595,27 @@ void Start(char loc[])
 
     outtextxy(midx + dim / 6, midy + dim / 6, number);
 
-    Interact(tabla, endx, endy);
-    settextjustify(0, 2);
+    bool b, r;
+    b = r = false;
+    Interact(tabla, endx, endy, b, r);
 
-    setvisualpage(0);
-    setactivepage(0);
-    cleardevice();
-    SelectLvl();
+    if(b == true)
+    {
+        settextjustify(0, 2);
+
+        setvisualpage(0);
+        setactivepage(0);
+        cleardevice();
+        SelectLvl();
+    }
+
+    if(r == true)
+    {
+        setvisualpage(0);
+        setactivepage(0);
+        cleardevice();
+        Start(loc);
+    }
 }
 
 /**
@@ -866,117 +943,120 @@ void CreateTable()
             }
 
             int lasts = s;
-            while(s)     /// salvez intr un fisier
+            while(s == 1)     /// salvez intr un fisier
             {
                 setcolor(WHITE);
                 settextstyle(8, HORIZ_DIR, 3);
                 settextjustify(1, 1);
                 outtextxy(startx + (total + 3) * dim, height / 2 - dim / 2, "NUME:");
 
-                char ch = getch();
-                if(ch == '\b')
+                if(kbhit())
                 {
-                    if(lgnume > 0)
+                    char ch = getch();
+                    if(ch == '\b')
                     {
-                        lgnume--;
-                        nume[lgnume] = 0;
-
-                        Clear(startx + (total + 2) * dim, height / 2 - dim / 2, width, height / 2 + dim);
-                        setcolor(Azure);
-                        settextjustify(1, 1);
-                        settextstyle(8, HORIZ_DIR, 2);
-                        outtextxy(startx + (total + 3) * dim, height / 2, nume);
-                    }
-                }
-                else if(ch == 13)
-                {
-                    if(lgnume == 0)
-                    {
-                        Clear(60, 0, width, 60);
-                        setcolor(Color);
-                        settextstyle(8,HORIZ_DIR,4);
-                        settextjustify(CENTER_TEXT, CENTER_TEXT);
-                        if(variabila_meniu) strcpy(aux, "Add a name!");
-                        else strcpy(aux, "Introduceti un nume!");
-                        outtextxy(width / 2, 40, aux);
-                        continue;
-                    }
-
-                    if(ex == -1 || ey == -1)
-                    {
-                        Clear(60, 0, width, 60);
-                        setcolor(Color);
-                        settextstyle(8,HORIZ_DIR,4);
-                        settextjustify(CENTER_TEXT, CENTER_TEXT);
-                        if(variabila_meniu) strcpy(aux, "End-point is missing!");
-                        else strcpy(aux, "Lipseste end-point!");
-                        outtextxy(width / 2, 40, aux);
-                        continue;
-                    }
-
-                    int nrinsule = 0;
-                    int copyt[total][total];
-
-                    for(int i = 0; i < total; i++)
-                        for(int j = 0; j < total; j++)
-                            copyt[i][j] = tabla[i][j];
-
-                    for(int i = 0; i < total; i++)
-                        for(int j = 0; j < total; j++)
-                            if(copyt[i][j])
-                            {
-                                nrinsule++;
-                                Fill(copyt, i, j);
-                            }
-
-                    if(CheckWin(tabla, ex, ey) == 1 || nrinsule != 1)
-                    {
-                        Clear(60, 0, width, 60);
-                        setcolor(Color);
-                        settextstyle(8,HORIZ_DIR,4);
-                        settextjustify(CENTER_TEXT, CENTER_TEXT);
-                        if(variabila_meniu) strcpy(aux, "Unwinnable!");
-                        else strcpy(aux, "Imposibil de castigat!");
-                        outtextxy(width / 2, 40, aux);
-
-                        continue;
-                    }
-
-                    char dir[255];
-                    strcpy(dir, current_folder);
-                    strcat(dir, "/maps/");
-                    strcat(dir, nume);
-                    strcat(dir, ".txt");
-
-                    ofstream fout(dir);
-
-                    fout << ex << " " << ey << "\n";
-                    for(int i = 0; i < total; i++, fout << "\n")
-                        for(int j = 0; j < total; j++)
-                            fout << tabla[i][j] << " ";
-
-                    fout.close();
-                    s = 0;
-                }
-                else if(ch == 27)
-                {
-                    s = 0;
-                    lgnume = 0;
-                    Clear(60, 0, width, 60);
-                    Clear(startx + (total + 2) * dim, height / 2 - dim, width, height / 2 + dim);
-                }
-                else
-                {
-                    if(lgnume < 11)
-                    {
-                        if(isalpha(ch) || ('0' <= ch && ch <= '9') || ch == '-' || ch == '_')
+                        if(lgnume > 0)
                         {
-                            nume[lgnume++] = ch;
+                            lgnume--;
                             nume[lgnume] = 0;
+
+                            Clear(startx + (total + 2) * dim, height / 2 - dim / 2, width, height / 2 + dim);
                             setcolor(Azure);
                             settextjustify(1, 1);
                             settextstyle(8, HORIZ_DIR, 2);
                             outtextxy(startx + (total + 3) * dim, height / 2, nume);
+                        }
+                    }
+                    else if(ch == 13)
+                    {
+                        if(lgnume == 0)
+                        {
+                            Clear(60, 0, width, 60);
+                            setcolor(Color);
+                            settextstyle(8,HORIZ_DIR,4);
+                            settextjustify(CENTER_TEXT, CENTER_TEXT);
+                            if(variabila_meniu) strcpy(aux, "Add a name!");
+                            else strcpy(aux, "Introduceti un nume!");
+                            outtextxy(width / 2, 40, aux);
+                            continue;
+                        }
+
+                        if(ex == -1 || ey == -1)
+                        {
+                            Clear(60, 0, width, 60);
+                            setcolor(Color);
+                            settextstyle(8,HORIZ_DIR,4);
+                            settextjustify(CENTER_TEXT, CENTER_TEXT);
+                            if(variabila_meniu) strcpy(aux, "End-point is missing!");
+                            else strcpy(aux, "Lipseste end-point!");
+                            outtextxy(width / 2, 40, aux);
+                            continue;
+                        }
+
+                        int nrinsule = 0;
+                        int copyt[total][total];
+
+                        for(int i = 0; i < total; i++)
+                            for(int j = 0; j < total; j++)
+                                copyt[i][j] = tabla[i][j];
+
+                        for(int i = 0; i < total; i++)
+                            for(int j = 0; j < total; j++)
+                                if(copyt[i][j])
+                                {
+                                    nrinsule++;
+                                    Fill(copyt, i, j);
+                                }
+
+                        if(CheckWin(tabla, ex, ey) == 1 || nrinsule != 1)
+                        {
+                            Clear(60, 0, width, 60);
+                            setcolor(Color);
+                            settextstyle(8,HORIZ_DIR,4);
+                            settextjustify(CENTER_TEXT, CENTER_TEXT);
+                            if(variabila_meniu) strcpy(aux, "Unwinnable!");
+                            else strcpy(aux, "Imposibil de castigat!");
+                            outtextxy(width / 2, 40, aux);
+
+                            continue;
+                        }
+
+                        char dir[255];
+                        strcpy(dir, current_folder);
+                        strcat(dir, "/maps/");
+                        strcat(dir, nume);
+                        strcat(dir, ".txt");
+
+                        ofstream fout(dir);
+
+                        fout << ex << " " << ey << "\n";
+                        for(int i = 0; i < total; i++, fout << "\n")
+                            for(int j = 0; j < total; j++)
+                                fout << tabla[i][j] << " ";
+
+                        fout.close();
+                        s = 0;
+                    }
+                    else if(ch == 27)
+                    {
+                        s = 2;
+                        lgnume = 0;
+                        Clear(60, 0, width, 60);
+                        Clear(startx + (total + 2) * dim, height / 2 - dim, width, height / 2 + dim);
+                    }
+                    else
+                    {
+                        if(lgnume < 11)
+                        {
+                            if(isalpha(ch) || ('0' <= ch && ch <= '9') || ch == '-' || ch == '_')
+                            {
+                                nume[lgnume++] = ch;
+                                nume[lgnume] = 0;
+                                setcolor(Azure);
+                                settextjustify(1, 1);
+                                settextstyle(8, HORIZ_DIR, 2);
+                                outtextxy(startx + (total + 3) * dim, height / 2, nume);
+                            }
                         }
                     }
                 }
@@ -1016,11 +1096,18 @@ void SelectLvl()
 
     closedir(dir);
 
+    settextjustify(CENTER_TEXT, CENTER_TEXT);
+    settextstyle(SANS_SERIF_FONT, HORIZ_DIR, 4);
+    setcolor(WHITE);
+
+    if(variabila_meniu) outtextxy(width / 2, 50, "Select Map");
+    else outtextxy(width / 2, 50, "Selecteaza Mapa");
+
     Moves coord[50];
     int lg, but = 0, index = 0;
     char news[255];
     int startx = 100;
-    int starty = 50;
+    int starty = 100;
     srand(time(0));
     for(int i = 0; i < nrlvl; i++)
     {
@@ -1056,6 +1143,10 @@ void SelectLvl()
         settextstyle(8,HORIZ_DIR,1);
         settextjustify(CENTER_TEXT, CENTER_TEXT);
         outtextxy(startx + dim, starty + dim / 2, news);
+
+        settextstyle(10,HORIZ_DIR,2);
+        outtextxy(startx + dim, starty - 10, "X");
+
         startx += 3 * dim;
     }
 
@@ -1073,6 +1164,7 @@ void SelectLvl()
             }
 
             for(int i = 0; i < but; i++)
+            {
                 if(coord[i].xi <= mx && mx <= coord[i].xf && coord[i].yi <= my && my <= coord[i].yf)
                 {
                     news[0] = 0;
@@ -1082,8 +1174,27 @@ void SelectLvl()
                     setvisualpage(0);
                     setactivepage(0);
                     cleardevice();
+                    clearmouseclick(WM_LBUTTONDOWN);
                     Start(news);
                 }
+
+                if(coord[i].xi + dim - 10 <= mx && mx <= coord[i].xi + dim + 10 && coord[i].yi - 30 <= my && my <= coord[i].yi - 1)
+                {
+                    news[0] = 0;
+                    strcpy(news, current_folder);
+                    strcat(news, "/maps/");
+                    strcat(news, lvl[i + nrlvl - but]);
+                    remove(news);
+                    setvisualpage(0);
+                    setactivepage(0);
+                    cleardevice();
+
+                    clearmouseclick(WM_LBUTTONDOWN);
+                    SelectLvl();
+
+                    return;
+                }
+            }
         }
 
         clearmouseclick(WM_LBUTTONDOWN);
@@ -1324,7 +1435,7 @@ void Meniu_Highlight(int meniu,int &schimbare)
             Meniu_Engleza(0);
     }
 
-    page = 1- page;
+    page = 1 - page;
     delay(5);
 }
 
@@ -1550,6 +1661,7 @@ void Reguli_Romana()
 
 void Sageata()
 {
+    setcolor(WHITE);
     setlinestyle(0,0,3);
     line(25,350,50,325);
     line(25,350,50,375);
