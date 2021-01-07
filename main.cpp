@@ -21,7 +21,8 @@ bool page = 1, variabila_meniu = 0; /// 0 = meniu romana, 1 = meniu engleza
 COLORREF ColorShadow = RGB(170, 0, 30);
 COLORREF ActiveShadow = RGB(30, 150, 0);
 COLORREF Color = RGB(200, 0, 30);     // culoarea cercului
-COLORREF Active = RGB(0, 255, 0);     // culoarea posibilitatii
+COLORREF Active = RGB(0, 255, 0);     // culoarea Hover/Select cerc
+COLORREF Jump = RGB(0, 255, 1);     // culoarea posibilitatii
 COLORREF Create = RGB(105, 105, 105); // patrat de vreau sa l creez
 COLORREF ClearColor = RGB(10, 10, 10);  // folosit pentru a curata un patrat din ecran
 COLORREF Azure = RGB(0, 128, 255);
@@ -138,7 +139,7 @@ void Posiblemove(int px[], int py[], int lg)
             DrawCircle(midx - 2, midy + 2, R, ActiveShadow);
             DrawCircle(midx, midy, R, Active);
         }
-        else DrawCircle(midx, midy, Rposibil, Active);
+        else DrawCircle(midx, midy, Rposibil, Jump);
 
     }
 }
@@ -430,6 +431,11 @@ void Interact(int tabla[][total], int endx, int endy, bool &b, bool &r)
     UpdateTime(0);
 
     int mx, my, ct = 0;
+    int lastx, lasty;
+    int activex, activey;
+    int clicks = 0, l = -1;
+    activex = activey = lastx = lasty = -1;
+
     HDC dc = GetDC(NULL);
     while(1)
     {
@@ -441,15 +447,41 @@ void Interact(int tabla[][total], int endx, int endy, bool &b, bool &r)
             UpdateTime(ct);
 
 
+        mx = mousex();
+        my = mousey();
+
+        int x = GetX_coord(mx) - 1;       /// !!! x e coloana si y e linia !!!
+        int y = GetY_coord(my) - 1;
+
+        int newx = GetX_mat(x) + dim / 2;
+        int newy = GetY_mat(y) + dim / 2;
+
+        if(GetPixel(dc, newx, newy) == Color)
+        {
+            DrawCircle(newx - 2, newy + 2, R, ActiveShadow);
+            DrawCircle(newx, newy, R, Active);
+
+            if(lastx > 0 && lasty > 0 && (activex != lastx || activey != lasty))
+            {
+                DrawCircle(lastx - 2, lasty + 2, R, ColorShadow);
+                DrawCircle(lastx, lasty, R, Color);
+            }
+
+            lastx = newx;
+            lasty = newy;
+        }
+        else
+        {
+            if(lastx > 0 && lasty > 0 && (lastx != newx || lasty != newy) && (activex != lastx || activey != lasty))
+            {
+                DrawCircle(lastx - 2, lasty + 2, R, ColorShadow);
+                DrawCircle(lastx, lasty, R, Color);
+                lastx = lasty = -1;
+            }
+        }
+
         if(ismouseclick(WM_LBUTTONDOWN))
         {
-            mx = mousex();
-            my = mousey();
-            int x = GetX_coord(mx) - 1;       /// !!! x e coloana si y e linia !!!
-            int y = GetY_coord(my) - 1;
-
-            int newx = GetX_mat(x) + dim / 2;
-            int newy = GetY_mat(y) + dim / 2;
 
             if(mx < 100)
             {
@@ -468,8 +500,10 @@ void Interact(int tabla[][total], int endx, int endy, bool &b, bool &r)
                 continue;
 
 
-            if(GetPixel(dc, newx, newy) == Color)   /// vad daca am dat click pe o piesa rosie
+            if(GetPixel(dc, newx, newy) == Active)   /// vad daca am dat click pe o piesa rosie
             {
+                activex = newx;
+                activey = newy;
                 ClearPosiblemove(px, py, lg, tabla);
                 lg = 0;
                 for(int k = 0; k < 4; k++)
@@ -494,7 +528,7 @@ void Interact(int tabla[][total], int endx, int endy, bool &b, bool &r)
             }
             else {
 
-                if(GetPixel(dc, newx, newy) == Active)  /// verific daca am dat click pe o pozitie valida si mut piesa
+                if(GetPixel(dc, newx, newy) == Jump)  /// verific daca am dat click pe o pozitie valida si mut piesa
                 {
                     for(int k = 0; k < 4; k++)
                         if(px[lg - 1] + 2 * dx[k] == x && py[lg - 1] + 2 * dy[k] == y)
@@ -779,8 +813,10 @@ void CreateTable()
     {
         if(ismouseclick(WM_LBUTTONDOWN))
         {
-            getmouseclick(WM_LBUTTONDOWN, mx, my);
 
+         //   getmouseclick(WM_LBUTTONDOWN, mx, my);
+            mx = mousex();
+            my = mousey();
             if(mx < 100)
             {
                 setcolor(WHITE);
@@ -828,6 +864,7 @@ void CreateTable()
                 d = 0;
                 s = 1;
             }
+
 
             int x, y, newx, newy;
             x = GetX_coord(mx) - 1;
