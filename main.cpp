@@ -5,6 +5,9 @@
 #include <filesystem>
 #include <dirent.h>
 #include <time.h>
+#include <windows.h>
+#include <mmsystem.h>
+#include <stdlib.h>
 
 namespace fs = std::filesystem;
 using namespace std;
@@ -17,8 +20,11 @@ int height = 700;
 int dim = 65;     // dimensiunea unui patrat
 int R = 16;       // raza cerculi
 int Rposibil = 8;
+int lastcx = 1160 - dim/2, lastcy = 200 - dim / 2;
 char current_folder[256];
 bool page = 1, variabila_meniu = 0; /// 0 = meniu romana, 1 = meniu engleza
+bool efect=1, muzica=1;
+
 COLORREF ColorShadow = RGB(170, 0, 30);
 COLORREF ActiveShadow = RGB(30, 150, 0);
 COLORREF Color = RGB(200, 0, 30);     // culoarea cercului
@@ -26,6 +32,14 @@ COLORREF Active = RGB(0, 255, 0);     // culoarea Hover/Select cerc
 COLORREF Jump = RGB(0, 255, 1);     // culoarea posibilitatii
 COLORREF Create = RGB(105, 105, 105); // patrat de vreau sa l creez
 COLORREF ClearColor = RGB(10, 10, 10);  // folosit pentru a curata un patrat din ecran
+COLORREF Purple = RGB(107,1,180);
+COLORREF PurpleShadow = RGB(77,0,75);
+COLORREF Gold = RGB(255,223,0);
+COLORREF GoldShadow = RGB(207,181,79);
+COLORREF Blu = RGB(0, 50, 255);
+COLORREF BluShadow = RGB(0,50,80);
+COLORREF Red = RGB(200, 0, 30);
+COLORREF RedShadow = RGB(150, 0, 30);
 COLORREF Azure = RGB(0, 128, 255);
 int dx[] = {-1, 1, 0, 0};     /// vectori de directie
 int dy[] = {0, 0, 1, -1};
@@ -34,6 +48,10 @@ struct Moves
 {
     int xi, yi, xf, yf, dir;
 };
+
+/**
+    ISAC LUCIAN
+*/
 
 int GetX_coord(int x);
 int GetY_coord(int y);
@@ -59,6 +77,10 @@ inline bool Inmat(int x, int y);
 inline double dist(int xi, int yi, int xf, int yf);
 
 //////////////////////////////////
+
+/**
+    ALEX OBREJA
+*/
 
 void Meniu();
 void Meniu_Highlight(int meniu,int &schimbare);
@@ -195,7 +217,17 @@ void UpdateMoves(Moves a[], int n)
     int startx = width / 2 + dim * total;
     int starty = height / 2 - dim * total / 2;
     char num[3], from_to[20];
-    itoa(n, num, 10);
+    if(n > 9)
+    {
+        num[0] = n / 10 + '0';
+        num[1] = n % 10 + '0';
+        num[2] = 0;
+    }
+    else
+    {
+        num[0] = n + '0';
+        num[1] = 0;
+    }
 
     Clear(startx - 4 * dim + 10, 0, width, height);
 
@@ -466,8 +498,8 @@ void Interact(int tabla[][total], int endx, int endy, bool &b, bool &r)
     int px[5], py[5];   /// pozitiile valabile
     int lg = 0, nr_moves = 0, status, nr;
     bool enable = true;
-    int undox = width / 2 - dim / 2;
-    int undoy = height / 2 - dim * total / 2 - dim;
+    int undox = width / 6 - dim / 2 + 15;
+    int undoy = height / 2 + dim * total / 2 - dim;
 
     NoPossibleMoves(tabla);
 
@@ -577,6 +609,9 @@ void Interact(int tabla[][total], int endx, int endy, bool &b, bool &r)
 
                 if(GetPixel(dc, newx, newy) == Jump)  /// verific daca am dat click pe o pozitie valida si mut piesa
                 {
+                    if(efect && !muzica)
+                        PlaySound("piesa.wav",NULL,SND_ASYNC);
+
                     for(int k = 0; k < 4; k++)
                         if(px[lg - 1] + 2 * dx[k] == x && py[lg - 1] + 2 * dy[k] == y)
                         {
@@ -660,8 +695,8 @@ void Start(char loc[])
     strcpy(img, current_folder);
     strcat(img, "/res/undo.jpg");
 
-    int undox = width / 2 - dim / 2;
-    int undoy = height / 2 - dim * total / 2 - dim;
+    int undox = width / 6 - dim / 2 + 15;
+    int undoy = height / 2 + dim * total / 2 - dim;
     readimagefile(img, undox, undoy, undox + dim, undoy + dim);
 
     strcpy(img, current_folder);
@@ -882,8 +917,6 @@ void CreateTable()
         delay(10);
         if(ismouseclick(WM_LBUTTONDOWN))
         {
-
-         //   getmouseclick(WM_LBUTTONDOWN, mx, my);
             mx = mousex();
             my = mousey();
             if(mx < 100)
@@ -1323,7 +1356,7 @@ void SelectLvl()
     }
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 void Meniu()
@@ -1340,11 +1373,8 @@ void Meniu()
 void Interactiune_Meniu()
 {
     int x,y,schimbare=1;
-    bool efect=1, muzica=1;
 
-    settextjustify(CENTER_TEXT, CENTER_TEXT);
-
-    ///Reguli_Romana();
+    Reguli_Romana();
     while(1)
     {
         ///double buffering
@@ -1352,9 +1382,6 @@ void Interactiune_Meniu()
         setactivepage(1-page);
 
         /// highlight butoane
-
-        cleardevice();
-        delay(70);
         Meniu_Highlight(variabila_meniu,schimbare);
 
         ///click butoane
@@ -1371,7 +1398,6 @@ void Interactiune_Meniu()
                 setactivepage(page);
                 cleardevice();
                 SelectLvl();
-
             }
 
             else if(x>=535 && x<=815 && y>=260 && y<=300)
@@ -1387,7 +1413,7 @@ void Interactiune_Meniu()
                 setvisualpage(page);
                 setactivepage(1-page);
                 cleardevice();
-///                Reguli();
+                Reguli();
             }
 
             else if(x>=570 && x<=780 && y>=420 && y<=460)
@@ -1405,6 +1431,8 @@ void Interactiune_Meniu()
 
 inline void Meniu_Romana(int i)
 {
+    settextstyle(8,HORIZ_DIR,6);
+    settextjustify(CENTER_TEXT, CENTER_TEXT);
 
     outtextxy(width / 2,100,"[Solitar]");
 
@@ -1423,6 +1451,9 @@ inline void Meniu_Romana(int i)
 
 inline void Meniu_Engleza(int i)
 {
+    settextstyle(8,HORIZ_DIR,6);
+    settextjustify(CENTER_TEXT, CENTER_TEXT);
+
     outtextxy(width / 2,100,"[Solitaire]");
 
     settextstyle(8,HORIZ_DIR,4);
@@ -1438,39 +1469,13 @@ inline void Meniu_Engleza(int i)
         outtextxy(width / 2,525,"Quit");
 }
 
-///Coordonate
-/*
-    "Joaca"
-    rectangle(575,205,715,275);
-
-    "Cum se joaca"
-    rectangle(520,285,820,350)
-
-    "Setari"
-    rectangle(550,360,760,425);
-
-    "Iesire"
-    rectangle(566,435,740,495);
-
-    "Limba Romana"
-    rectangle(375,185,700,410);
-
-    "Limba Engleza"
-    rectangle(800,185,1120,410);
-
-    "Efecte Sonore"
-    rectangle(380,450,690,670);
-
-    "Muzica"
-    rectangle(875,450,1045,660);
-*/
-
 void Meniu_Highlight(int meniu,int &schimbare)
 {
     int x,y;
     x=mousex();
     y=mousey();
 
+    cleardevice();
     if(x>=615 && x<=735 && y>=200 && y<=240)
     {
         schimbare=1;
@@ -1537,12 +1542,12 @@ void Meniu_Highlight(int meniu,int &schimbare)
         schimbare=5;
         if(!meniu)
         {
-            Highlight("Iesire",675,515,5,Color);
+            Highlight("Iesire",675,515,5,Red);
             Meniu_Romana(5);
         }
         else
         {
-            Highlight("Quit",675,515,5,Color);
+            Highlight("Quit",675,515,5,Red);
             Meniu_Engleza(5);
         }
     }
@@ -1557,6 +1562,7 @@ void Meniu_Highlight(int meniu,int &schimbare)
     }
 
     page = 1 - page;
+    delay(50);
 }
 
 void Setari(bool &efect, bool &muzica)
@@ -1582,31 +1588,81 @@ void Setari(bool &efect, bool &muzica)
             x=mousex();
             y=mousey();
 
-            if(x>=375 && x<=700 && y>=185 && y<=410 && variabila_meniu)
+            if(x>=230 && x<=555 && y>=185 && y<=410 && variabila_meniu)
             {
                 variabila_meniu=0;
                 return;
             }
 
-            else if(x>=800 && x<=1120 && y>=185 && y<=410 && !variabila_meniu)
+            else if(x>=655 && x<=975 && y>=185 && y<=410 && !variabila_meniu)
             {
                 variabila_meniu=1;
                 return;
             }
 
-            else if(x>=380 && x<=690 && y>=450 && y<=670)
+            else if(x>=270 && x<=550 && y>=450 && y<=670)
                 efect=1-efect;
 
-            else if(x>=875 && x<=1045 && y>=450 && y<=660)
-                if(muzica)
-                    muzica=0;
+            else if(x>=700 && x<=920 && y>=450 && y<=660)
+            {
+                muzica=1-muzica;
+                if(!muzica)
+                        PlaySound(NULL,0,0);
                 else
-                    muzica=1;
-
-            else if(x<=350)
+                        PlaySound("Music.wav",NULL,SND_LOOP | SND_ASYNC);
+            }
+            else if(x>=1120 && x<=1280)
+            {
+                if(y>=170 && y<=230)
+                {
+                    setfillstyle(1,0);
+                    floodfill(lastcx,lastcy,BLACK);
+                    setcolor(Active);
+                    lastcx=1160-dim/2;
+                    lastcy=200-dim/2;
+                    rectangle(1160-dim/2,200-dim/2,1160+dim/2,200+dim/2);
+                    Color=Red;
+                    ColorShadow=RedShadow;
+                }
+                else if(y>=270 && y<=330)
+                {
+                    setfillstyle(1,0);
+                    floodfill(lastcx,lastcy,BLACK);
+                    setcolor(Active);
+                    lastcx=1160-dim/2;
+                    lastcy=300-dim/2;
+                    rectangle(1160-dim/2,300-dim/2,1160+dim/2,300+dim/2);
+                    Color=Blu;
+                    ColorShadow=BluShadow;
+                }
+                else if(y>=370 && y<=430)
+                {
+                    setfillstyle(1,0);
+                    floodfill(lastcx,lastcy,BLACK);
+                    setcolor(Active);
+                    lastcx=1160-dim/2;
+                    lastcy=400-dim/2;
+                    rectangle(1160-dim/2,400-dim/2,1160+dim/2,400+dim/2);
+                    Color=Purple;
+                    ColorShadow=PurpleShadow;
+                }
+                else if(y>=470 && y<=530)
+                {
+                    setfillstyle(1,0);
+                    floodfill(lastcx,lastcy,BLACK);
+                    setcolor(Active);
+                    lastcx=1160-dim/2;
+                    lastcy=500-dim/2;
+                    rectangle(1160-dim/2,500-dim/2,1160+dim/2,500+dim/2);
+                    Color=Gold;
+                    ColorShadow=GoldShadow;
+                }
+            }
+            else if(x<=100)
                 return;
         }
 
+        delay(10);
         page = 1 - page;
     }
 }
@@ -1620,60 +1676,75 @@ void Setari_Romana(bool efect, bool muzica)
     settextstyle(8,HORIZ_DIR,5);
     outtextxy(170,150,"Limba:");
     outtextxy(170,420,"Sunet:");
+    ///outtextxy(1150,150,"Culoare:");
 
     settextstyle(8,HORIZ_DIR,4);
 
-    setcolor(Color);
-    outtextxy(490,370,"Ro");
-    setcolor(YELLOW);
-    outtextxy(530,370,"ma");
     setcolor(Azure);
-    outtextxy(570,370,"na");
+    outtextxy(350,370,"Ro");
+    setcolor(YELLOW);
+    outtextxy(390,370,"ma");
+    setcolor(Red);
+    outtextxy(430,370,"na");
+
+    /// culori piese
+    setcolor(WHITE);
+    outtextxy(1158,100,"Culoarea piesei:");
+    setcolor(Active);
+    rectangle(lastcx,lastcy,lastcx+dim,lastcy+dim);
+    DrawCircle(1158,202,R,RedShadow);
+    DrawCircle(1160,200,R,Red);
+    DrawCircle(1158,302,R,BluShadow);
+    DrawCircle(1160,300,R,Blu);
+    DrawCircle(1158,402,R,PurpleShadow);
+    DrawCircle(1160,400,R,Purple);
+    DrawCircle(1158,502,R,GoldShadow);
+    DrawCircle(1160,500,R,Gold);
+    ///culori puncte
 
     char img[256];
     strcpy(img, current_folder);
     strcat(img, "/res/romana.jpg");
-
-    readimagefile(img,385,195,685,345);
+    readimagefile(img,240,195,540,345);
 
     strcpy(img, current_folder);
     strcat(img, "/res/english.jpg");
-    readimagefile(img,810,195,1110,345);
+    readimagefile(img,665,195,965,345);
 
     if(efect)
     {
         setcolor(Active);
         strcpy(img, current_folder);
         strcat(img, "/res/tic.jpg");
-        readimagefile(img,470,460,610,600);
+        readimagefile(img,360,460,500,600);
     }
     else
     {
-        setcolor(Color);
+        setcolor(Red);
         strcpy(img, current_folder);
         strcat(img, "/res/cross.jpg");
-        readimagefile(img,470,460,610,600);
+        readimagefile(img,360,460,500,600);
     }
-    outtextxy(410,620,"Efecte sonore");
+    outtextxy(410,640,"Efecte sonore");
 
     if(muzica)
     {
         setcolor(Active);
         strcpy(img, current_folder);
         strcat(img, "/res/tic.jpg");
-        readimagefile(img,895,460,1035,600);
+        readimagefile(img,750,460,890,600);
     }
     else
     {
-        setcolor(Color);
+        setcolor(Red);
         strcpy(img, current_folder);
         strcat(img, "/res/cross.jpg");
-        readimagefile(img,895,460,1035,600);
+        readimagefile(img,750,460,890,600);
     }
-    outtextxy(895,620,"Muzica");
+    outtextxy(800,640,"Muzica");
 
     setcolor(WHITE);
-    outtextxy(880,370,"English");
+    outtextxy(820,370,"English");
 }
 
 void Setari_Engleza(bool efect, bool muzica)
@@ -1688,95 +1759,174 @@ void Setari_Engleza(bool efect, bool muzica)
 
     settextstyle(8,HORIZ_DIR,4);
     setcolor(Azure);
-    outtextxy(900,370,"En");
-    setcolor(Color);
-    outtextxy(953,370,"gli");
+    outtextxy(760,370,"En");
+    setcolor(Red);
+    outtextxy(810,370,"gli");
     setcolor(WHITE);
-    outtextxy(1000,370,"sh");
+    outtextxy(860,370,"sh");
+
+    setcolor(WHITE);
+    outtextxy(1158,100,"Color of the piece:");
+    setcolor(Active);
+    rectangle(lastcx,lastcy,lastcx+dim,lastcy+dim);
+    DrawCircle(1158,202,R,RedShadow);
+    DrawCircle(1160,200,R,Red);
+    DrawCircle(1158,302,R,BluShadow);
+    DrawCircle(1160,300,R,Blu);
+    DrawCircle(1158,402,R,PurpleShadow);
+    DrawCircle(1160,400,R,Purple);
+    DrawCircle(1158,502,R,GoldShadow);
+    DrawCircle(1160,500,R,Gold);
 
     char img[256];
     strcpy(img, current_folder);
     strcat(img, "/res/romana.jpg");
-
-    readimagefile(img,385,195,685,345);
+    readimagefile(img,240,195,540,345);
 
     strcpy(img, current_folder);
     strcat(img, "/res/english.jpg");
-    readimagefile(img,810,195,1110,345);
+    readimagefile(img,665,195,965,345);
 
     if(efect)
     {
         setcolor(Active);
         strcpy(img, current_folder);
         strcat(img, "/res/tic.jpg");
-        readimagefile(img,470,460,610,600);
+        readimagefile(img,360,460,500,600);
     }
     else
     {
-        setcolor(Color);
+        setcolor(Red);
         strcpy(img, current_folder);
         strcat(img, "/res/cross.jpg");
-        readimagefile(img,470,460,610,600);
+        readimagefile(img,360,460,500,600);
     }
-    outtextxy(410,620,"Sound effects");
+    outtextxy(410,640,"Sound effects");
 
     if(muzica)
     {
         setcolor(Active);
         strcpy(img, current_folder);
         strcat(img, "/res/tic.jpg");
-        readimagefile(img,895,460,1035,600);
+        readimagefile(img,750,460,890,600);
     }
     else
     {
-        setcolor(Color);
+        setcolor(Red);
         strcpy(img, current_folder);
         strcat(img, "/res/cross.jpg");
-        readimagefile(img,895,460,1035,600);
+        readimagefile(img,750,460,890,600);
     }
-    outtextxy(895,620,"Music");
+    outtextxy(800,640,"Music");
 
     setcolor(WHITE);
-    outtextxy(445,370,"Romana");
+    outtextxy(390,370,"Romana");
 }
 
-///in lucru
+
 void Reguli()
 {
     int x;
 
+    cleardevice();
+    if(!variabila_meniu)
+        Reguli_Romana();
+    else
+        Reguli_Engleza();
+    setvisualpage(1-page);
     while(1)
-    {
-        setvisualpage(page);
-        setactivepage(1-page);
-
-        cleardevice();
-        Sageata();
-
-        if(!variabila_meniu)
-            Reguli_Romana();
-
         if(ismouseclick(WM_LBUTTONDOWN))
         {
             clearmouseclick(WM_LBUTTONDOWN);
             x=mousex();
 
-            if(x<=350)
+            if(x<=250)
                 return;
         }
-        page=1-page;
-    }
 }
-///in lucru
+
 void Reguli_Romana()
 {
     Sageata();
     settextstyle(8,HORIZ_DIR,6);
-    outtextxy(520,60,"Cum se joaca");
+    outtextxy(width/2,60,"Cum se joaca?");
 
     settextstyle(8,HORIZ_DIR,4);
-    outtextxy(170,150,"1) Pe tabla");
-    getch();
+
+    ///cuvinte albe
+    setcolor(WHITE);
+    outtextxy(700,150,"1)Tabla de joc are un spatiu liber, restul fiind ocupate");
+    outtextxy(200,190,"de piese.");
+    outtextxy(720,250,"2)Doua piese consecutive pot fi mutate pe un spatiu liber,");
+    outtextxy(620,300,"alaturat, marcat de un punct, devenind una singura.");
+    outtextxy(650,370,"3)Jocul este castigat atunci cand pe tabla ramane o ");
+    outtextxy(700,410,"singura piesa si este pierdut daca pe tabla raman cel putin");
+    outtextxy(490,450,"doua piese, care nu mai pot fi mutate.");
+
+    ///cuvinte culoare punct
+    setcolor(Active);
+    outtextxy(700,150,"spatiu liber");
+    outtextxy(1160,250,"spatiu liber");
+    outtextxy(620,300,"punct");
+    outtextxy(1140,370,"o");
+
+    ///cuvinte culoare piesa
+    setcolor(Color);
+    outtextxy(220,190,"piese");
+    outtextxy(280,250,"Doua piese");
+    outtextxy(1000,300,"una singura");
+    outtextxy(210,450,"doua piese");
+    outtextxy(240,410,"singura piesa");
+
+
+    setcolor(Active);
+    outtextxy(470,370,"castigat");
+    setcolor(Color);
+    outtextxy(620,410,"pierdut");
+
+    setcolor(WHITE);
+}
+
+void Reguli_Engleza()
+{
+    Sageata();
+    settextstyle(8,HORIZ_DIR,6);
+    outtextxy(width/2,60,"How to Play?");
+
+    settextstyle(8,HORIZ_DIR,4);
+
+    ///cuvinte albe
+    setcolor(WHITE);
+    outtextxy(710,150,"1)The game board has one blank square and the other ones");
+    outtextxy(340,190,"are occupied by pieces.");
+    outtextxy(650,250,"2)Two side by side pieces can be moved on an empty");
+    outtextxy(630,300,"neighboring square, marked by a point, becoming one.");
+    outtextxy(680,370,"3)The game is won when there is only one piece left on");
+    outtextxy(670,410,"the board and is lost if two or more pieces remain, that");
+    outtextxy(280,450,"can not be moved.");
+
+    ///cuvinte culoare punct
+    setcolor(Active);
+    outtextxy(770,150,"blank square");
+    outtextxy(1100,250,"empty");
+    outtextxy(290,300,"neighboring square");
+    outtextxy(800,300,"point");
+
+    ///cuvinte culoare piesa
+    setcolor(Color);
+    outtextxy(490,190,"pieces");
+    outtextxy(220,250,"Two");
+    outtextxy(590,250,"pieces");
+    outtextxy(790,410,"two or more pieces");
+    outtextxy(920,370,"only one piece");
+
+
+    setcolor(Active);
+    outtextxy(450,370,"won");
+    setcolor(Color);
+    outtextxy(490,410,"lost");
+
+    setcolor(WHITE);
 }
 
 void Sageata()
@@ -1791,13 +1941,17 @@ void Sageata()
 inline void Highlight(char cuv[],int x,int y,int marime,unsigned culoare)
 {
     setcolor(culoare);
-    settextstyle(8, HORIZ_DIR, marime);
+    settextjustify(CENTER_TEXT, CENTER_TEXT);
+    settextstyle(8,HORIZ_DIR,marime);
     outtextxy(x,y,cuv);
     setcolor(15);
+    settextstyle(8,HORIZ_DIR,4);
+
 }
 
 int main()
 {
+    PlaySound(TEXT("Music.wav"),NULL,SND_LOOP | SND_ASYNC);
     Meniu();
     return 0;
 }
