@@ -2,14 +2,11 @@
 #include <fstream>
 #include <graphics.h>
 #include <math.h>
-#include <filesystem>
 #include <dirent.h>
-#include <time.h>
+#include <time.h>   /// pentru random
 #include <windows.h>
-#include <mmsystem.h>
-#include <stdlib.h>
+#include <mmsystem.h>   /// pentru muzica
 
-namespace fs = std::filesystem;
 using namespace std;
 
 const int total = 8;    // dimensiunea matricei
@@ -41,6 +38,8 @@ COLORREF BluShadow = RGB(0,50,80);
 COLORREF Red = RGB(200, 0, 30);
 COLORREF RedShadow = RGB(150, 0, 30);
 COLORREF Azure = RGB(0, 128, 255);
+COLORREF Piesa = Color,Umbra = ColorShadow,Hover = Active,UmbraHover = ActiveShadow; ///Umbra inlocuieste ColorShadow, Piesa = Color, Hover = Active, UmbraHover = ActiveShadow
+
 int dx[] = {-1, 1, 0, 0};     /// vectori de directie
 int dy[] = {0, 0, 1, -1};
 
@@ -83,17 +82,19 @@ inline double dist(int xi, int yi, int xf, int yf);
 */
 
 void Meniu();
+inline void Meniu_Romana(int i);
+inline void Meniu_Engleza(int i);
 void Meniu_Highlight(int meniu,int &schimbare);
 void Interactiune_Meniu();
-void Setari(bool &efect, bool &muzica);
-void Setari_Romana(bool efect, bool muzica);
-void Setari_Engleza(bool efect, bool muzica);
+void Setari(int &culoarepiesa,int &culoarehover);
+void Setari_Romana(int culoarepiesa, int culoarehover);
+void Setari_Engleza(int culoarepiesa, int culoarehover);
+void PiesaGlobala(int x,int y,int &culoarepiesa);
+void HoverGlobal(int x,int y,int &culoarehover); ///culoarea unei piese cand trec peste ea
 void Reguli();
 void Reguli_Romana();
 void Reguli_Engleza();
 void Sageata();
-inline void Meniu_Romana(int i);
-inline void Meniu_Engleza(int i);
 inline void Highlight(char cuv[],int x,int y,int font,unsigned color);
 
 /**
@@ -166,8 +167,8 @@ void Posiblemove(int px[], int py[], int lg)
 
         if(i == lg - 1)
         {
-            DrawCircle(midx - 2, midy + 2, R, ActiveShadow);
-            DrawCircle(midx, midy, R, Active);
+            DrawCircle(midx - 2, midy + 2, R, UmbraHover);
+            DrawCircle(midx, midy, R, Hover);
         }
         else DrawCircle(midx, midy, Rposibil, Jump);
 
@@ -187,8 +188,8 @@ void ClearPosiblemove(int px[], int py[], int lg, int tabla[][total])
 
         if(i == lg - 1 && tabla[py[i]][px[i]] == fills)
         {
-            DrawCircle(midx - 2, midy + 2, R, ColorShadow);
-            DrawCircle(midx, midy, R, Color);
+            DrawCircle(midx - 2, midy + 2, R, Umbra);
+            DrawCircle(midx, midy, R, Piesa);
         }
         else
         {
@@ -345,8 +346,8 @@ void MovePiece(int tabla[][total], int from_x, int from_y, int to_x, int to_y, i
     midx = GetX_mat(to_x) + dim / 2;
     midy = GetY_mat(to_y) + dim / 2;
 
-    DrawCircle(midx - 2, midy + 2, R, ColorShadow);
-    DrawCircle(midx, midy, R, Color);
+    DrawCircle(midx - 2, midy + 2, R, Umbra);
+    DrawCircle(midx, midy, R, Piesa);
 }
 
 void Undo(int tabla[][total], Moves a[], int &n)
@@ -368,14 +369,14 @@ void Undo(int tabla[][total], Moves a[], int &n)
     midx = GetX_mat(a[n].yi) + dim / 2;
     midy = GetY_mat(a[n].xi) + dim / 2;
 
-    DrawCircle(midx - 2, midy + 2, R, ColorShadow);
-    DrawCircle(midx, midy, R, Color);
+    DrawCircle(midx - 2, midy + 2, R, Umbra);
+    DrawCircle(midx, midy, R, Piesa);
 
     midx = GetX_mat(a[n].yi + dx[a[n].dir]) + dim / 2;
     midy = GetY_mat(a[n].xi + dy[a[n].dir]) + dim / 2;
 
-    DrawCircle(midx - 2, midy + 2, R, ColorShadow);
-    DrawCircle(midx, midy, R, Color);
+    DrawCircle(midx - 2, midy + 2, R, Umbra);
+    DrawCircle(midx, midy, R, Piesa);
 }
 
 int NoPossibleMoves(int tabla[][total])
@@ -387,7 +388,7 @@ int NoPossibleMoves(int tabla[][total])
 
     settextjustify(CENTER_TEXT, CENTER_TEXT);
     settextstyle(SANS_SERIF_FONT, HORIZ_DIR, 2);
-    setcolor(Active);
+    setcolor(Hover);
 
     if(variabila_meniu) outtextxy(startx, starty, "No. possible moves: ");
     else outtextxy(startx, starty, "Nr. mutari posibile: ");
@@ -533,15 +534,15 @@ void Interact(int tabla[][total], int endx, int endy, bool &b, bool &r)
         int newx = GetX_mat(x) + dim / 2;
         int newy = GetY_mat(y) + dim / 2;
 
-        if(GetPixel(dc, newx, newy) == Color)
+        if(GetPixel(dc, newx, newy) == Piesa)
         {
-            DrawCircle(newx - 2, newy + 2, R, ActiveShadow);
-            DrawCircle(newx, newy, R, Active);
+            DrawCircle(newx - 2, newy + 2, R, UmbraHover);
+            DrawCircle(newx, newy, R, Hover);
 
             if(lastx > 0 && lasty > 0 && (activex != lastx || activey != lasty))
             {
-                DrawCircle(lastx - 2, lasty + 2, R, ColorShadow);
-                DrawCircle(lastx, lasty, R, Color);
+                DrawCircle(lastx - 2, lasty + 2, R, Umbra);
+                DrawCircle(lastx, lasty, R, Piesa);
             }
 
             lastx = newx;
@@ -551,8 +552,8 @@ void Interact(int tabla[][total], int endx, int endy, bool &b, bool &r)
         {
             if(lastx > 0 && lasty > 0 && (lastx != newx || lasty != newy) && (activex != lastx || activey != lasty))
             {
-                DrawCircle(lastx - 2, lasty + 2, R, ColorShadow);
-                DrawCircle(lastx, lasty, R, Color);
+                DrawCircle(lastx - 2, lasty + 2, R, Umbra);
+                DrawCircle(lastx, lasty, R, Piesa);
                 lastx = lasty = -1;
             }
         }
@@ -579,7 +580,7 @@ void Interact(int tabla[][total], int endx, int endy, bool &b, bool &r)
                 continue;
 
 
-            if(GetPixel(dc, newx, newy) == Active)   /// vad daca am dat click pe o piesa rosie
+            if(GetPixel(dc, newx, newy) == Hover)   /// vad daca am dat click pe o piesa rosie
             {
                 activex = newx;
                 activey = newy;
@@ -639,6 +640,8 @@ void Interact(int tabla[][total], int endx, int endy, bool &b, bool &r)
                 {
                     ShuffleMove(tabla, nr, m, nr_moves);
                     UpdateMoves(m, nr_moves);
+                    if(efect && !muzica)
+                        PlaySound("piesa.wav",NULL,SND_ASYNC);
                 }
 
             }
@@ -737,8 +740,8 @@ void Start(char loc[])
 
             if(tabla[i][j] == fills)
             {
-                DrawCircle(midx - 2, midy + 2, R, ColorShadow);
-                DrawCircle(midx, midy, R, Color);
+                DrawCircle(midx - 2, midy + 2, R, Umbra);
+                DrawCircle(midx, midy, R, Piesa);
             }
 
         }
@@ -746,7 +749,7 @@ void Start(char loc[])
         startx = aux;
     }
 
-    setcolor(Active);
+    setcolor(Hover);
     number[1] = endx + '0' + 1;
     number[0] = endy + '0' + 1;
     startx = GetX_mat(endx);
@@ -824,8 +827,8 @@ void CreateTable()
     int cercx, cercy;       /// Cerc
     cercx = patratx + dim / 2;
     cercy = patraty + 2 * dim;
-    DrawCircle(cercx - 2, cercy + 2, R, ColorShadow);
-    DrawCircle(cercx, cercy, R, Color);
+    DrawCircle(cercx - 2, cercy + 2, R, Umbra);
+    DrawCircle(cercx, cercy, R, Piesa);
     setcolor(Create);
 
     if(variabila_meniu) strcpy(aux, "Add circle");
@@ -837,7 +840,7 @@ void CreateTable()
     patratx_end = patratx;
     patraty_end = cercy + dim;
 
-    setcolor(Active);
+    setcolor(Hover);
     rectangle(patratx_end, patraty_end, patratx_end + dim, patraty_end + dim);
 
     setcolor(Create);
@@ -1003,8 +1006,8 @@ void CreateTable()
                     midx = newx + dim / 2;
                     midy = newy + dim / 2;
 
-                    DrawCircle(midx - 2, midy + 2, R, ColorShadow);
-                    DrawCircle(midx, midy, R, Color);
+                    DrawCircle(midx - 2, midy + 2, R, Umbra);
+                    DrawCircle(midx, midy, R, Piesa);
                 }
                 else if(e == 1 && (tabla[y][x] == emptys || tabla[y][x] == fills))
                 {
@@ -1035,7 +1038,7 @@ void CreateTable()
                     midx = newx + dim / 2;
                     midy = newy + dim / 2;
 
-                    setcolor(Active);
+                    setcolor(Hover);
                     rectangle(newx, newy, newx + dim, newy + dim);
                     outtextxy(midx + dim / 6, midy + dim / 6, number);
 
@@ -1093,7 +1096,7 @@ void CreateTable()
 
                             if(Inmat(i, j) && tabla[j][i] != 0)
                             {
-                                if(i == ex && j == ey) setcolor(Active);
+                                if(i == ex && j == ey) setcolor(Hover);
                                 else setcolor(WHITE);
                                 i = GetX_mat(i);
                                 j = GetY_mat(j);
@@ -1108,7 +1111,7 @@ void CreateTable()
                 {
                     int i = GetX_mat(ex);
                     int j = GetY_mat(ey);
-                    setcolor(Active);
+                    setcolor(Hover);
                     rectangle(i, j, i + dim, j + dim);
                 }
             }
@@ -1373,6 +1376,8 @@ void Meniu()
 void Interactiune_Meniu()
 {
     int x,y,schimbare=1;
+    int culoarepiesa=1,culoarehover=1;
+
 
     Reguli_Romana();
     while(1)
@@ -1417,11 +1422,8 @@ void Interactiune_Meniu()
             }
 
             else if(x>=570 && x<=780 && y>=420 && y<=460)
-            {
-                setvisualpage(page);
-                setactivepage(1-page);
-                Setari(efect,muzica);
-            }
+                Setari(culoarepiesa,culoarehover);
+
 
             else if(x>=585 && x<=765 && y>=500 && y<=540)
                 exit(1);
@@ -1542,12 +1544,12 @@ void Meniu_Highlight(int meniu,int &schimbare)
         schimbare=5;
         if(!meniu)
         {
-            Highlight("Iesire",675,515,5,Red);
+            Highlight("Iesire",675,515,5,Color);
             Meniu_Romana(5);
         }
         else
         {
-            Highlight("Quit",675,515,5,Red);
+            Highlight("Quit",675,515,5,Color);
             Meniu_Engleza(5);
         }
     }
@@ -1565,7 +1567,7 @@ void Meniu_Highlight(int meniu,int &schimbare)
     delay(50);
 }
 
-void Setari(bool &efect, bool &muzica)
+void Setari(int &culoarepiesa,int &culoarehover)
 {
     int x,y;
 
@@ -1578,9 +1580,9 @@ void Setari(bool &efect, bool &muzica)
         Sageata();
 
         if(!variabila_meniu)
-            Setari_Romana(efect,muzica);
+            Setari_Romana(culoarepiesa,culoarehover);
         else
-            Setari_Engleza(efect, muzica);
+            Setari_Engleza(culoarepiesa, culoarehover);
 
         if(ismouseclick(WM_LBUTTONDOWN))
         {
@@ -1611,64 +1613,86 @@ void Setari(bool &efect, bool &muzica)
                 else
                         PlaySound("Music.wav",NULL,SND_LOOP | SND_ASYNC);
             }
-            else if(x>=1120 && x<=1280)
-            {
-                if(y>=170 && y<=230)
-                {
-                    setfillstyle(1,0);
-                    floodfill(lastcx,lastcy,BLACK);
-                    setcolor(Active);
-                    lastcx=1160-dim/2;
-                    lastcy=200-dim/2;
-                    rectangle(1160-dim/2,200-dim/2,1160+dim/2,200+dim/2);
-                    Color=Red;
-                    ColorShadow=RedShadow;
-                }
-                else if(y>=270 && y<=330)
-                {
-                    setfillstyle(1,0);
-                    floodfill(lastcx,lastcy,BLACK);
-                    setcolor(Active);
-                    lastcx=1160-dim/2;
-                    lastcy=300-dim/2;
-                    rectangle(1160-dim/2,300-dim/2,1160+dim/2,300+dim/2);
-                    Color=Blu;
-                    ColorShadow=BluShadow;
-                }
-                else if(y>=370 && y<=430)
-                {
-                    setfillstyle(1,0);
-                    floodfill(lastcx,lastcy,BLACK);
-                    setcolor(Active);
-                    lastcx=1160-dim/2;
-                    lastcy=400-dim/2;
-                    rectangle(1160-dim/2,400-dim/2,1160+dim/2,400+dim/2);
-                    Color=Purple;
-                    ColorShadow=PurpleShadow;
-                }
-                else if(y>=470 && y<=530)
-                {
-                    setfillstyle(1,0);
-                    floodfill(lastcx,lastcy,BLACK);
-                    setcolor(Active);
-                    lastcx=1160-dim/2;
-                    lastcy=500-dim/2;
-                    rectangle(1160-dim/2,500-dim/2,1160+dim/2,500+dim/2);
-                    Color=Gold;
-                    ColorShadow=GoldShadow;
-                }
-            }
-            else if(x<=100)
+
+            else if(x<=200)
                 return;
+
+            PiesaGlobala(x,y,culoarepiesa);
+            HoverGlobal(x,y,culoarehover);
         }
 
-        delay(10);
         page = 1 - page;
     }
 }
 
+void PiesaGlobala(int x, int y, int &culoarepiesa)
+{
+    if( x>=1058 && x<=1118 && y>=185 && y<=240 )
+    {
+        culoarepiesa=1;
+        Piesa=Color;
+        Umbra=ColorShadow;
+    }
 
-void Setari_Romana(bool efect, bool muzica)
+    else if( x>=1058 && x<= 1118 && y>=285 && y<=340)
+    {
+        culoarepiesa=2;
+        Piesa=Blu;
+        Umbra=BluShadow;
+    }
+
+    else if(x>=1058 && x<=1118 && y>=385 && y<=440)
+    {
+        culoarepiesa=3;
+        Piesa=Active;
+        Umbra=ActiveShadow;
+    }
+
+    else if(x>=1058 && x<=1118 && y>=485 && y<=540)
+    {
+        culoarepiesa=4;
+        Piesa=Gold;
+        Umbra=GoldShadow;
+    }
+}
+
+void HoverGlobal(int x,int y,int &culoarehover)
+{
+    if( x>=1158 && x<=1218 && y>=185 && y<=240 )
+    {
+        culoarehover=1;
+        Hover=Active;
+        UmbraHover=ActiveShadow;
+        Jump= RGB(0,255,1);
+    }
+
+    else if( x>=1158 && x<= 1218 && y>=285 && y<=340)
+    {
+        culoarehover=2;
+        Hover=Gold;
+        UmbraHover=GoldShadow;
+        Jump= RGB(255,223,1);
+    }
+
+    else if(x>=1158 && x<=1218 && y>=385 && y<=440)
+    {
+        culoarehover=3;
+        Hover=Color;
+        UmbraHover=ColorShadow;
+        Jump= RGB(200,0,31);
+    }
+
+    else if(x>=1158 && x<=1218 && y>=485 && y<=540)
+    {
+        culoarehover=4;
+        Hover=Blu;
+        UmbraHover=BluShadow;
+        Jump= RGB(0,50,81);
+    }
+}
+
+
+void Setari_Romana(int culoarepiesa, int culoarehover)
 {
     settextstyle(8,HORIZ_DIR,6);
     outtextxy(630,60,"Setari");
@@ -1676,31 +1700,55 @@ void Setari_Romana(bool efect, bool muzica)
     settextstyle(8,HORIZ_DIR,5);
     outtextxy(170,150,"Limba:");
     outtextxy(170,420,"Sunet:");
-    ///outtextxy(1150,150,"Culoare:");
+    outtextxy(1150,150,"Culoare:");
+
+    ///culori piese
+    DrawCircle(1088,215,20,ColorShadow);
+    DrawCircle(1092,213,20,Color);
+
+    DrawCircle(1088,315,20,BluShadow);
+    DrawCircle(1092,313,20,Blu);
+
+    DrawCircle(1088,415,20,ActiveShadow);
+    DrawCircle(1092,413,20,Active);
+
+    DrawCircle(1088,515,20,GoldShadow);
+    DrawCircle(1092,513,20,Gold);
+
+    ///culori uncte
+    DrawCircle(1188,215,10,Active);
+    DrawCircle(1188,315,10,Gold);
+    DrawCircle(1188,415,10,Color);
+    DrawCircle(1188,515,10,Blu);
+
+    setcolor(15);
+    ///piesa selectata
+    if(culoarepiesa==1)
+        rectangle(1058,185,1118,240);
+    if(culoarepiesa==2)
+        rectangle(1058,285,1118,340);
+    if(culoarepiesa==3)
+        rectangle(1058,385,1118,440);
+    if(culoarepiesa==4)
+        rectangle(1058,485,1118,540);
+
+    ///punct selectat
+    if(culoarehover==1)
+        rectangle(1158,185,1218,240);
+    if(culoarehover==2)
+        rectangle(1158,285,1218,340);
+    if(culoarehover==3)
+        rectangle(1158,385,1218,440);
+    if(culoarehover==4)
+        rectangle(1158,485,1218,540);
 
     settextstyle(8,HORIZ_DIR,4);
-
     setcolor(Azure);
     outtextxy(350,370,"Ro");
     setcolor(YELLOW);
     outtextxy(390,370,"ma");
-    setcolor(Red);
+    setcolor(Color);
     outtextxy(430,370,"na");
-
-    /// culori piese
-    setcolor(WHITE);
-    outtextxy(1158,100,"Culoarea piesei:");
-    setcolor(Active);
-    rectangle(lastcx,lastcy,lastcx+dim,lastcy+dim);
-    DrawCircle(1158,202,R,RedShadow);
-    DrawCircle(1160,200,R,Red);
-    DrawCircle(1158,302,R,BluShadow);
-    DrawCircle(1160,300,R,Blu);
-    DrawCircle(1158,402,R,PurpleShadow);
-    DrawCircle(1160,400,R,Purple);
-    DrawCircle(1158,502,R,GoldShadow);
-    DrawCircle(1160,500,R,Gold);
-    ///culori puncte
 
     char img[256];
     strcpy(img, current_folder);
@@ -1720,7 +1768,7 @@ void Setari_Romana(bool efect, bool muzica)
     }
     else
     {
-        setcolor(Red);
+        setcolor(Color);
         strcpy(img, current_folder);
         strcat(img, "/res/cross.jpg");
         readimagefile(img,360,460,500,600);
@@ -1736,7 +1784,7 @@ void Setari_Romana(bool efect, bool muzica)
     }
     else
     {
-        setcolor(Red);
+        setcolor(Color);
         strcpy(img, current_folder);
         strcat(img, "/res/cross.jpg");
         readimagefile(img,750,460,890,600);
@@ -1747,7 +1795,7 @@ void Setari_Romana(bool efect, bool muzica)
     outtextxy(820,370,"English");
 }
 
-void Setari_Engleza(bool efect, bool muzica)
+void Setari_Engleza(int culoarepiesa, int culoarehover)
 {
     setcolor(WHITE);
     settextstyle(8,HORIZ_DIR,6);
@@ -1756,27 +1804,55 @@ void Setari_Engleza(bool efect, bool muzica)
     settextstyle(8,HORIZ_DIR,5);
     outtextxy(170,150,"Language:");
     outtextxy(170,420,"Sound:");
+    outtextxy(1150,150,"Color:");
+
+    ///culori piese
+    DrawCircle(1088,215,20,ColorShadow);
+    DrawCircle(1092,213,20,Color);
+
+    DrawCircle(1088,315,20,BluShadow);
+    DrawCircle(1092,313,20,Blu);
+
+    DrawCircle(1088,415,20,ActiveShadow);
+    DrawCircle(1092,413,20,Active);
+
+    DrawCircle(1088,515,20,GoldShadow);
+    DrawCircle(1092,513,20,Gold);
+
+    ///culori puncte
+    DrawCircle(1188,215,10,Active);
+    DrawCircle(1188,315,10,Gold);
+    DrawCircle(1188,415,10,Color);
+    DrawCircle(1188,515,10,Blu);
+
+    setcolor(15);
+    ///piesa selectata
+    if(culoarepiesa==1)
+        rectangle(1058,185,1118,240);
+    if(culoarepiesa==2)
+        rectangle(1058,285,1118,340);
+    if(culoarepiesa==3)
+        rectangle(1058,385,1118,440);
+    if(culoarepiesa==4)
+        rectangle(1058,485,1118,540);
+
+    ///punct selectat
+    if(culoarehover==1)
+        rectangle(1158,185,1218,240);
+    if(culoarehover==2)
+        rectangle(1158,285,1218,340);
+    if(culoarehover==3)
+        rectangle(1158,385,1218,440);
+    if(culoarehover==4)
+        rectangle(1158,485,1218,540);
 
     settextstyle(8,HORIZ_DIR,4);
     setcolor(Azure);
     outtextxy(760,370,"En");
-    setcolor(Red);
+    setcolor(Color);
     outtextxy(810,370,"gli");
     setcolor(WHITE);
     outtextxy(860,370,"sh");
-
-    setcolor(WHITE);
-    outtextxy(1158,100,"Color of the piece:");
-    setcolor(Active);
-    rectangle(lastcx,lastcy,lastcx+dim,lastcy+dim);
-    DrawCircle(1158,202,R,RedShadow);
-    DrawCircle(1160,200,R,Red);
-    DrawCircle(1158,302,R,BluShadow);
-    DrawCircle(1160,300,R,Blu);
-    DrawCircle(1158,402,R,PurpleShadow);
-    DrawCircle(1160,400,R,Purple);
-    DrawCircle(1158,502,R,GoldShadow);
-    DrawCircle(1160,500,R,Gold);
 
     char img[256];
     strcpy(img, current_folder);
@@ -1796,7 +1872,7 @@ void Setari_Engleza(bool efect, bool muzica)
     }
     else
     {
-        setcolor(Red);
+        setcolor(Color);
         strcpy(img, current_folder);
         strcat(img, "/res/cross.jpg");
         readimagefile(img,360,460,500,600);
@@ -1812,7 +1888,7 @@ void Setari_Engleza(bool efect, bool muzica)
     }
     else
     {
-        setcolor(Red);
+        setcolor(Color);
         strcpy(img, current_folder);
         strcat(img, "/res/cross.jpg");
         readimagefile(img,750,460,890,600);
@@ -1863,15 +1939,15 @@ void Reguli_Romana()
     outtextxy(700,410,"singura piesa si este pierdut daca pe tabla raman cel putin");
     outtextxy(490,450,"doua piese, care nu mai pot fi mutate.");
 
-    ///cuvinte culoare punct
-    setcolor(Active);
+    ///cuvinte culoare hover
+    setcolor(Hover);
     outtextxy(700,150,"spatiu liber");
     outtextxy(1160,250,"spatiu liber");
     outtextxy(620,300,"punct");
     outtextxy(1140,370,"o");
 
     ///cuvinte culoare piesa
-    setcolor(Color);
+    setcolor(Piesa);
     outtextxy(220,190,"piese");
     outtextxy(280,250,"Doua piese");
     outtextxy(1000,300,"una singura");
@@ -1905,15 +1981,15 @@ void Reguli_Engleza()
     outtextxy(670,410,"the board and is lost if two or more pieces remain, that");
     outtextxy(280,450,"can not be moved.");
 
-    ///cuvinte culoare punct
-    setcolor(Active);
+    ///cuvinte culoare hover
+    setcolor(Hover);
     outtextxy(770,150,"blank square");
     outtextxy(1100,250,"empty");
     outtextxy(290,300,"neighboring square");
     outtextxy(800,300,"point");
 
     ///cuvinte culoare piesa
-    setcolor(Color);
+    setcolor(Piesa);
     outtextxy(490,190,"pieces");
     outtextxy(220,250,"Two");
     outtextxy(590,250,"pieces");

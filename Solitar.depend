@@ -22,15 +22,13 @@
 	<filesystem>
 	<dirent.h>
 
-1610571456 source:c:\users\lucian\desktop\solitar\main.cpp
+1610580294 source:c:\users\lucian\desktop\solitar\main.cpp
 	<iostream>
 	<fstream>
 	<graphics.h>
 	<math.h>
-	<filesystem>
 	<dirent.h>
 	<time.h>
 	<windows.h>
 	<mmsystem.h>
-	<stdlib.h>
 
