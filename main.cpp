@@ -4,6 +4,7 @@
 #include <math.h>
 #include <filesystem>
 #include <dirent.h>
+#include <time.h>
 
 namespace fs = std::filesystem;
 using namespace std;
@@ -38,23 +39,28 @@ int GetX_coord(int x);
 int GetY_coord(int y);
 int GetX_mat(int x);
 int GetY_mat(int y);
-inline bool Inmat(int x, int y);
+int NoPossibleMoves(int tabla[][total]);
+int CheckWin(int tabla[][total], int endx, int endy);
 void Posiblemove(int px[], int py[], int lg);
 void ClearPosiblemove(int px[], int py[], int lg);
 void Interact(int tabla[][total]);
 void Start(char loc[]);
-inline double dist(int xi, int yi, int xf, int yf);
 void DrawCircle(int x, int y, int r, COLORREF c);
 void Clear(int xi, int yi, int xf, int yf);
-void MovePiece(int px[], int py[], int dir);
+void MovePiece(int tabla[][total], int from_x, int from_y, int to_x, int to_y, int dir);
 void Undo(int tabla[][total], Moves a[], int &n);
 void CreateTable();
 void SelectLvl();
-void NoPossibleMoves(int tabla[][total]);
+void ShuffleMove(int tabla[][total], int maxim, Moves m[], int &n);
+void UpdateTime(int ms);
+void UpdateMoves(Moves a[], int n);
+void Fill(int tabla[][total], int x, int y);
+inline bool Inmat(int x, int y);
+inline double dist(int xi, int yi, int xf, int yf);
+
+//////////////////////////////////
 
 void Meniu();
-inline void Meniu_Romana(int i);
-inline void Meniu_Engleza(int i);
 void Meniu_Highlight(int meniu,int &schimbare);
 void Interactiune_Meniu();
 void Setari(bool &efect, bool &muzica);
@@ -64,6 +70,8 @@ void Reguli();
 void Reguli_Romana();
 void Reguli_Engleza();
 void Sageata();
+inline void Meniu_Romana(int i);
+inline void Meniu_Engleza(int i);
 inline void Highlight(char cuv[],int x,int y,int font,unsigned color);
 
 /**
@@ -338,7 +346,7 @@ void Undo(int tabla[][total], Moves a[], int &n)
     DrawCircle(midx, midy, R, Color);
 }
 
-void NoPossibleMoves(int tabla[][total])
+int NoPossibleMoves(int tabla[][total])
 {
     int startx = width / 6;
     int starty = height / 2;
@@ -380,6 +388,8 @@ void NoPossibleMoves(int tabla[][total])
     number[1] = cnt % 10 + '0';
     number[2] = 0;
     outtextxy(startx + 3 * dim / 2, starty, number);
+
+    return cnt;
 }
 
 void UpdateTime(int ms)
@@ -411,6 +421,41 @@ void UpdateTime(int ms)
     outtextxy(width / 6 + 20, height / 5, M);
 }
 
+void ShuffleMove(int tabla[][total], int maxim, Moves m[], int &n)
+{
+    int r;
+    srand(time(NULL));
+    r = rand() % maxim;
+
+    for(int i = 0; i < total; i++)
+        for(int j = 0; j < total; j++)
+            if(tabla[i][j] == fills)
+            {
+                for(int k = 0; k < 4; k++)
+                {
+                    int x = i + dy[k];
+                    int y = j + dx[k];
+
+                    if(Inmat(x, y) && tabla[x][y] == fills)
+                    {
+                        x += dy[k];
+                        y += dx[k];
+
+                        if(Inmat(x, y) && tabla[x][y] == emptys)
+                        {
+                            if(r == 0)
+                            {
+                                m[n++] = {i, j, x, y, k};
+                                MovePiece(tabla, j, i, y, x, k);
+                                return;
+                            }
+                            r--;
+                        }
+                    }
+                }
+            }
+}
+
 /**
     actualizez mutarile
 */
@@ -419,7 +464,7 @@ void Interact(int tabla[][total], int endx, int endy, bool &b, bool &r)
 {
     Moves m[50];
     int px[5], py[5];   /// pozitiile valabile
-    int lg = 0, nr_moves = 0, status;
+    int lg = 0, nr_moves = 0, status, nr;
     bool enable = true;
     int undox = width / 2 - dim / 2;
     int undoy = height / 2 - dim * total / 2 - dim;
@@ -486,6 +531,7 @@ void Interact(int tabla[][total], int endx, int endy, bool &b, bool &r)
             if(mx < 100)
             {
                 b = true;
+                cleardevice();
                 return;
             }
 
@@ -493,6 +539,7 @@ void Interact(int tabla[][total], int endx, int endy, bool &b, bool &r)
             if(undox - dim <= mx && mx < undox && undoy <= my && my <= undoy + dim)
             {
                 r = true;
+                cleardevice();
                 return;
             }
 
@@ -552,7 +599,13 @@ void Interact(int tabla[][total], int endx, int endy, bool &b, bool &r)
                     UpdateMoves(m, nr_moves);
                 }
 
-                NoPossibleMoves(tabla);
+                nr = NoPossibleMoves(tabla);
+                if(undox + dim <= mx && mx <= undox + 2 * dim && undoy <= my && my <= undoy + dim)
+                {
+                    ShuffleMove(tabla, nr, m, nr_moves);
+                    UpdateMoves(m, nr_moves);
+                }
+
             }
 
             status = CheckWin(tabla, endx, endy);
@@ -615,6 +668,10 @@ void Start(char loc[])
     strcat(img, "/res/reset.jpg");
     readimagefile(img, undox - dim + 10, undoy + 10, undox - 10, undoy + dim - 10);
 
+    strcpy(img, current_folder);
+    strcat(img, "/res/random.jpg");
+    readimagefile(img, undox + dim, undoy, undox + 2 * dim, undoy + dim);
+
     int startx = width / 2 - dim * total / 2 - dim;
     int starty = height / 2 - dim * total / 2;
     int aux = startx, midx, midy;
@@ -655,8 +712,8 @@ void Start(char loc[])
     }
 
     setcolor(Active);
-    number[0] = endx + '0' + 1;
-    number[1] = endy + '0' + 1;
+    number[1] = endx + '0' + 1;
+    number[0] = endy + '0' + 1;
     startx = GetX_mat(endx);
     starty = GetY_mat(endy);
     rectangle(startx, starty, startx + dim, starty + dim);
@@ -671,8 +728,6 @@ void Start(char loc[])
 
     if(b == true)
     {
-        settextjustify(0, 2);
-
         setvisualpage(0);
         setactivepage(0);
         cleardevice();
@@ -788,6 +843,18 @@ void CreateTable()
     int midx, midy;
     char number[3];
 
+    if(variabila_meniu)
+    {
+        outtextxy(width / 2, height - dim, "*press esc to exit save mode");
+        outtextxy(width / 2, height - dim / 2, "*press enter after typing the name");
+    }
+    else
+    {
+        outtextxy(width / 2, height - dim, "*apasa esc pentru a iesi din salvare");
+        outtextxy(width / 2, height - dim / 2, "*apasa enter dupa introducerea numelui");
+    }
+
+
     settextjustify(0, 2);
     for(int i = 0; i < total; i++)
     {
@@ -811,6 +878,8 @@ void CreateTable()
     int mx, my, p = 0, c = 0, e = 0, d = 0, s = 0;
     while(1)
     {
+        clearmouseclick(WM_LBUTTONDOWN);
+        delay(10);
         if(ismouseclick(WM_LBUTTONDOWN))
         {
 
@@ -820,10 +889,14 @@ void CreateTable()
             if(mx < 100)
             {
                 setcolor(WHITE);
+                cleardevice();
+                settextjustify(CENTER_TEXT, CENTER_TEXT);
+
                 return;
             }
 
             /// vad ce am selectat
+            setcolor(WHITE);
             if(patratx <= mx && mx <= patratx + dim && patraty <= my && my <= patraty + dim)
             {
                 p = 1;      /// setez patrat alb
@@ -832,7 +905,7 @@ void CreateTable()
                 d = 0;      /// setez delete
                 s = 0;      /// setez save
             }
-            else if(dist(mx, my, cercx, cercy) <= R)
+            else if(dist(mx, my, cercx, cercy) - 10 <= R)
             {
                 p = 0;
                 c = 1;
@@ -872,6 +945,8 @@ void CreateTable()
 
             if(x > -1 && y > -1 && x < total && y < total)
             {
+                settextstyle(8, HORIZ_DIR, 1);
+                settextjustify(0, 2);
                 if(p == 1)      /// adaug un patrat
                 {
                     tabla[y][x] = emptys;
@@ -885,8 +960,6 @@ void CreateTable()
 
                     setcolor(WHITE);
                     rectangle(newx, newy, newx + dim, newy + dim);
-                    settextstyle(8, HORIZ_DIR, 1);
-                    settextjustify(0, 2);
                     outtextxy(midx + dim / 6, midy + dim / 6, number);
                 }
                 else if(c == 1 && tabla[y][x] == emptys)    /// adaug un cerc
@@ -915,8 +988,6 @@ void CreateTable()
 
                         setcolor(WHITE);
                         rectangle(newx, newy, newx + dim, newy + dim);
-                        settextstyle(8, HORIZ_DIR, 1);
-                        settextjustify(0, 2);
                         outtextxy(midx + dim / 6, midy + dim / 6, number);
                     }
 
@@ -933,8 +1004,6 @@ void CreateTable()
 
                     setcolor(Active);
                     rectangle(newx, newy, newx + dim, newy + dim);
-                    settextstyle(8, HORIZ_DIR, 1);
-                    settextjustify(0, 2);
                     outtextxy(midx + dim / 6, midy + dim / 6, number);
 
                 }
@@ -953,8 +1022,6 @@ void CreateTable()
 
                         setcolor(WHITE);
                         rectangle(newx, newy, newx + dim, newy + dim);
-                        settextstyle(8, HORIZ_DIR, 1);
-                        settextjustify(0, 2);
                         outtextxy(midx + dim / 6, midy + dim / 6, number);
                         ex = ey = -1;
                     }
@@ -984,8 +1051,6 @@ void CreateTable()
 
                         setcolor(Create);
                         rectangle(newx, newy, newx + dim, newy + dim);
-                        settextstyle(8, HORIZ_DIR, 1);
-                        settextjustify(0, 2);
                         outtextxy(midx + dim / 6, midy + dim / 6, number);
 
                         for(int k = 0; k < 4; k++)      /// refact patratele stricate
@@ -1016,11 +1081,11 @@ void CreateTable()
             }
 
             int lasts = s;
+            settextstyle(8, HORIZ_DIR, 3);
+            settextjustify(1, 1);
             while(s == 1)     /// salvez intr un fisier
             {
                 setcolor(WHITE);
-                settextstyle(8, HORIZ_DIR, 3);
-                settextjustify(1, 1);
                 outtextxy(startx + (total + 3) * dim, height / 2 - dim / 2, "NUME:");
 
                 if(kbhit())
@@ -1033,10 +1098,8 @@ void CreateTable()
                             lgnume--;
                             nume[lgnume] = 0;
 
-                            Clear(startx + (total + 2) * dim, height / 2 - dim / 2, width, height / 2 + dim);
+                            Clear(startx + (total + 2) * dim - 10, height / 2 - dim / 2, width, height / 2 + dim);
                             setcolor(Azure);
-                            settextjustify(1, 1);
-                            settextstyle(8, HORIZ_DIR, 2);
                             outtextxy(startx + (total + 3) * dim, height / 2, nume);
                         }
                     }
@@ -1046,8 +1109,7 @@ void CreateTable()
                         {
                             Clear(60, 0, width, 60);
                             setcolor(Color);
-                            settextstyle(8,HORIZ_DIR,4);
-                            settextjustify(CENTER_TEXT, CENTER_TEXT);
+
                             if(variabila_meniu) strcpy(aux, "Add a name!");
                             else strcpy(aux, "Introduceti un nume!");
                             outtextxy(width / 2, 40, aux);
@@ -1058,8 +1120,6 @@ void CreateTable()
                         {
                             Clear(60, 0, width, 60);
                             setcolor(Color);
-                            settextstyle(8,HORIZ_DIR,4);
-                            settextjustify(CENTER_TEXT, CENTER_TEXT);
                             if(variabila_meniu) strcpy(aux, "End-point is missing!");
                             else strcpy(aux, "Lipseste end-point!");
                             outtextxy(width / 2, 40, aux);
@@ -1085,8 +1145,6 @@ void CreateTable()
                         {
                             Clear(60, 0, width, 60);
                             setcolor(Color);
-                            settextstyle(8,HORIZ_DIR,4);
-                            settextjustify(CENTER_TEXT, CENTER_TEXT);
                             if(variabila_meniu) strcpy(aux, "Unwinnable!");
                             else strcpy(aux, "Imposibil de castigat!");
                             outtextxy(width / 2, 40, aux);
@@ -1126,29 +1184,20 @@ void CreateTable()
                                 nume[lgnume++] = ch;
                                 nume[lgnume] = 0;
                                 setcolor(Azure);
-                                settextjustify(1, 1);
-                                settextstyle(8, HORIZ_DIR, 2);
                                 outtextxy(startx + (total + 3) * dim, height / 2, nume);
                             }
                         }
                     }
                 }
+
+                delay(10);
             }
 
-            if(lasts && !s)
+            if(lasts == 1 && s == 0)
                 break;
-
-            clearmouseclick(WM_LBUTTONDOWN);
         }
-
-
-        //if(GetAsyncKeyState(VK_ESCAPE)) /// inchid cand apas esc
-            //break;
-
-        delay(100);
     }
-
-    setcolor(WHITE);
+    settextjustify(CENTER_TEXT, CENTER_TEXT);
 }
 
 void SelectLvl()
@@ -1214,7 +1263,6 @@ void SelectLvl()
         coord[but++] = {startx, starty, startx + 2 * dim, starty + dim};
         rectangle(startx, starty, startx + 2 * dim, starty + dim);
         settextstyle(8,HORIZ_DIR,1);
-        settextjustify(CENTER_TEXT, CENTER_TEXT);
         outtextxy(startx + dim, starty + dim / 2, news);
 
         settextstyle(10,HORIZ_DIR,2);
@@ -1294,6 +1342,8 @@ void Interactiune_Meniu()
     int x,y,schimbare=1;
     bool efect=1, muzica=1;
 
+    settextjustify(CENTER_TEXT, CENTER_TEXT);
+
     ///Reguli_Romana();
     while(1)
     {
@@ -1302,6 +1352,9 @@ void Interactiune_Meniu()
         setactivepage(1-page);
 
         /// highlight butoane
+
+        cleardevice();
+        delay(70);
         Meniu_Highlight(variabila_meniu,schimbare);
 
         ///click butoane
@@ -1318,6 +1371,7 @@ void Interactiune_Meniu()
                 setactivepage(page);
                 cleardevice();
                 SelectLvl();
+
             }
 
             else if(x>=535 && x<=815 && y>=260 && y<=300)
@@ -1351,8 +1405,6 @@ void Interactiune_Meniu()
 
 inline void Meniu_Romana(int i)
 {
-    settextstyle(8,HORIZ_DIR,6);
-    settextjustify(CENTER_TEXT, CENTER_TEXT);
 
     outtextxy(width / 2,100,"[Solitar]");
 
@@ -1371,9 +1423,6 @@ inline void Meniu_Romana(int i)
 
 inline void Meniu_Engleza(int i)
 {
-    settextstyle(8,HORIZ_DIR,6);
-    settextjustify(CENTER_TEXT, CENTER_TEXT);
-
     outtextxy(width / 2,100,"[Solitaire]");
 
     settextstyle(8,HORIZ_DIR,4);
@@ -1422,7 +1471,6 @@ void Meniu_Highlight(int meniu,int &schimbare)
     x=mousex();
     y=mousey();
 
-    cleardevice();
     if(x>=615 && x<=735 && y>=200 && y<=240)
     {
         schimbare=1;
@@ -1509,7 +1557,6 @@ void Meniu_Highlight(int meniu,int &schimbare)
     }
 
     page = 1 - page;
-    delay(5);
 }
 
 void Setari(bool &efect, bool &muzica)
@@ -1744,12 +1791,9 @@ void Sageata()
 inline void Highlight(char cuv[],int x,int y,int marime,unsigned culoare)
 {
     setcolor(culoare);
-    settextjustify(CENTER_TEXT, CENTER_TEXT);
-    settextstyle(8,HORIZ_DIR,marime);
+    settextstyle(8, HORIZ_DIR, marime);
     outtextxy(x,y,cuv);
     setcolor(15);
-    settextstyle(8,HORIZ_DIR,4);
-
 }
 
 int main()
